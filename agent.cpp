@@ -6,8 +6,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-
-#define MAXLINE 1024
+#include <iostream>
 
 using namespace std;
 
@@ -30,9 +29,11 @@ int main(int argc, char *argv[]){
 	int send_port = atoi(argv[1]);
 	int agent_port = atoi(argv[2]);
 	int recv_port = atoi(argv[3]);
+	double loss_rate = atof(argv[4]);
 	struct sockaddr_in recvaddr;
 	struct sockaddr_in sendaddr;
 	struct sockaddr_in agentaddr;
+	struct sockaddr_in tmpaddr;
 	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if ( sockfd < 0 ) {
 		perror("socket creation failed");
@@ -41,7 +42,7 @@ int main(int argc, char *argv[]){
 	memset(&recvaddr, 0, sizeof(recvaddr));
 	memset(&sendaddr, 0, sizeof(sendaddr));
 	memset(&agentaddr, 0, sizeof(agentaddr));
-	
+	memset(&tmpaddr, 0, sizeof(agentaddr));
 	sendaddr.sin_family = AF_INET;
 	sendaddr.sin_addr.s_addr = INADDR_ANY;
 	sendaddr.sin_port = htons(send_port);
@@ -57,9 +58,21 @@ int main(int argc, char *argv[]){
 		exit(EXIT_FAILURE);
 	}
 	segment tmp_seg;
-	char * stuff_to_send = (char*) malloc(sizeof(segment));
-	recvfrom(sockfd, stuff_to_send, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &sendaddr, (unsigned int*)sizeof(sendaddr));
-	memcpy(&tmp_seg, stuff_to_send, sizeof(segment));
-	printf("%s", tmp_seg.data);
+	while(true) {
+		recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &tmpaddr, (unsigned int*)sizeof(tmpaddr));
+		if(tmp_addr.sin_port == sendaddr.sin_port) { //from sender
+			if(tmp_seg.head.fin == 1) { //fin
+				printf("get     fin\n");
+				sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &recvaddr, sizeof(recvaddr))
+				printf("fwd     fin\n");
+			}
+			else { //data
+
+			}
+		}
+		else { //from receiver
+
+		}
+	}
     return 0;
 }
