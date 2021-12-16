@@ -11,9 +11,7 @@
 #include <string>
 #include <chrono>
 #include <ctime>
-#define current_time chrono::high_resolution_clock::now
-#define time_stamp chrono::high_resolution_clock::time_point
-#define elapsed_time(end, start) chrono::duration_cast<chrono::milliseconds>(end - start).count()
+#define TIMEOUT 10
 
 #define SIZEBUFF 1000
 
@@ -36,7 +34,6 @@ typedef struct{
 
 typedef struct{
 	deque<segment> queue;
-	deque<time_stamp> time_queue;
 	int sent_seq_num;
 	int window_size;
 	int threshold;
@@ -99,9 +96,15 @@ int main(int argc, char *argv[]) {
 	segment tmp_seg;
 	memset(&tmp_seg, 0, sizeof(segment));
 
+	//set socket timeout
+	struct timeval timeout;      
+  	timeout.tv_sec = TIMEOUT;
+  	timeout.tv_usec = 0;
+	setsockopt (sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
 	string input = to_string(width) + "," + to_string(height) + "," + to_string(vid_length) + "," + to_string(frame_size) + "\n";
 	sprintf(tmp_seg.data, "%s", input.c_str());
-	tmp_seg.head.seqNumber = -1;
+	tmp_seg.head.seqNumber = 0;
 	tmp_seg.head.length = strlen(input.c_str());
 	my_queue -> queue.push_back(tmp_seg);
 
@@ -109,13 +112,46 @@ int main(int argc, char *argv[]) {
 		//parase frame
 		cap >> img;
 		int iter = frame_size / SIZEBUFF;
+		int leftover = frame_size % SIZEBUFF;
 		for(int i = 0; i < iter; i++) {
 			memset(&tmp_seg, 0, sizeof(segment));
 			memcpy(&tmp_seg.data, img.data + i * SIZEBUFF, SIZEBUFF);
+			tmp_seg.head.length = SIZEBUFF;
+			tmp_seg.head.seqNumber = i + 1;
+			my_queue -> queue.push_back(tmp_seg);
 		}
-		//send each frame
+		memset(&tmp_seg, 0, sizeof(segment));
+		memcpy(&tmp_seg.data, img.data + iter * SIZEBUFF, leftover);
+		tmp_seg.head.length = leftover;
+		tmp_seg.head.seqNumber = iter + 1;
+		my_queue -> queue.push_back(tmp_seg);
+
+		int last_send = -1, last_ack = ((f == 0) ? -1 : 0);
+		int rtv;
+		//send each frame and get ACK
+		while(!(my_queue -> queue.empty())) {
+			for(int i = 0; i < my_queue -> window_size; i++) {
+				sendto(sockfd, &(my_queue -> queue[i]), sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
+				if(my_queue -> queue[i].head.seqNumber > last_send) cout << "send	data	#" << my_queue -> queue[i].head.seqNumber <<",	winSize = " << my_queue -> window_size;
+				else cout << "resnd	data	#" << my_queue -> queue[i].head.seqNumber <<",	winSize = " << my_queue -> window_size << endl;
+				last_send = my_queue -> queue[i].head.seqNumber;
+			}
+			for(int i = last_ack + 1; i < last_ack + 1 + my_queue -> window_size; i++) {
+				rtv = recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &agentaddr, (unsigned int*)sizeof(agentaddr));
+				if(rtv == -1) {
+					cout << "time	out,		threshold = " << my_queue -> threshold << endl;
+				}
+				else if(tmp_seg.head.ackNumber == i) {
+					my_queue -> queue.pop_front();
+					cout << "recv	ack	#" << i << endl;
+				}
+				else {
+					cout << "recv	ack	#" << tmp_seg.head.ackNumber << endl;
+				}	
+			}
+		}
 	}
-	// sendto(sockfd, stuff_to_send, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
+	// 
 	
 	return 0;
 }
