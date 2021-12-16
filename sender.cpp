@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 	cout << "frame size: " << frame_size << endl;
 	//start sending config of the video
 	deque<segment> queue;
-	int window_size = 1;
+	int window_size = 10;
 	int threshold = 16;
 	segment tmp_seg;
 	memset(&tmp_seg, 0, sizeof(segment));
@@ -115,6 +115,7 @@ int main(int argc, char *argv[]) {
 
 		int last_send = -1, last_ack = ((f == 0) ? -1 : 0);
 		int rtv;
+		unsigned int len = sizeof(agentaddr); 
 		//send each frame and get ACK
 		while(!(queue.empty())) {
 			for(int i = 0; i < window_size; i++) {
@@ -127,7 +128,7 @@ int main(int argc, char *argv[]) {
 			}
 			bool success = true;
 			for(int i = last_ack + 1; i < last_ack + 1 + window_size; i++) {
-				rtv = recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &agentaddr, (unsigned int*)sizeof(agentaddr));
+				rtv = recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &agentaddr, &len);
 				if(rtv == -1) {
 					cout << "time	out,		threshold = " << threshold << endl;
 					success = false;
