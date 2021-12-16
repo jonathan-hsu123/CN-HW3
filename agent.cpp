@@ -58,16 +58,27 @@ int main(int argc, char *argv[]){
 		exit(EXIT_FAILURE);
 	}
 	segment tmp_seg;
+	int total_data = 0;
+    int drop_data = 0;
 	while(true) {
 		recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &tmpaddr, (unsigned int*)sizeof(tmpaddr));
-		if(tmp_addr.sin_port == sendaddr.sin_port) { //from sender
+		if(tmpaddr.sin_port == sendaddr.sin_port) { //from sender
+			total_data++;
 			if(tmp_seg.head.fin == 1) { //fin
 				printf("get     fin\n");
-				sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &recvaddr, sizeof(recvaddr))
+				sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &recvaddr, sizeof(recvaddr));
 				printf("fwd     fin\n");
 			}
 			else { //data
-
+				int index = tmp_seg.head.seqNumber;
+                if(rand() % 100 < 100 * loss_rate){
+                    drop_data++;
+                    printf("drop	data	#%d,	loss rate = %.4f\n", index, (float)drop_data/total_data);
+                } else{ 
+                    printf("get	data	#%d\n",index);
+                    sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &recvaddr, sizeof(recvaddr));
+                    printf("fwd	data	#%d,	loss rate = %.4f\n",index,(float)drop_data/total_data);
+                }
 			}
 		}
 		else { //from receiver

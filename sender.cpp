@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
 	while(true) {
 		memset(&tmp_seg, 0, sizeof(segment));
 		tmp_seg.head.fin = 1;
-		sendto(sockfd, &(queue[i]), sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
+		sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
 		cout << "send	fin\n";
 		recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &agentaddr, (unsigned int*)sizeof(agentaddr));
 		if(tmp_seg.head.fin == 1 && tmp_seg.head.ack == 1) break;
