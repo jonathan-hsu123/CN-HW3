@@ -93,6 +93,7 @@ int main(int argc, char *argv[]){
 					printf("get     finack\n");
                     sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &sendaddr, sizeof(sendaddr));
                     printf("fwd     finack\n");
+					break;
 				}
 				else {
 					int index = tmp_seg.head.ackNumber;

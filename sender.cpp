@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 	cout << "frame size: " << frame_size << endl;
 	//start sending config of the video
 	deque<segment> queue;
-	int window_size = 10;
+	int window_size = 1;
 	int threshold = 16;
 	segment tmp_seg;
 	memset(&tmp_seg, 0, sizeof(segment));
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 	tmp_seg.head.seqNumber = 0;
 	tmp_seg.head.length = strlen(input.c_str());
 	queue.push_back(tmp_seg);
-	for(int f = 0; f < vid_length; f++) {
+	for(int f = 0; f < 2; f++) {
 		//parase frame
 		cap >> img;
 		int iter = frame_size / SIZEBUFF;
@@ -113,12 +113,14 @@ int main(int argc, char *argv[]) {
 		tmp_seg.head.seqNumber = iter + 1;
 		queue.push_back(tmp_seg);
 
+		int queue_size = queue.size();
 		int last_send = -1, last_ack = ((f == 0) ? -1 : 0);
 		int rtv;
 		unsigned int len = sizeof(agentaddr); 
 		//send each frame and get ACK
 		while(!(queue.empty())) {
 			for(int i = 0; i < window_size; i++) {
+				if(i >= queue_size) break;
 				sendto(sockfd, &(queue[i]), sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
 				if(queue[i].head.seqNumber > last_send) {
 					cout << "send	data	#" << queue[i].head.seqNumber <<",	winSize = " << window_size << endl;
@@ -127,21 +129,26 @@ int main(int argc, char *argv[]) {
 				else cout << "resnd	data	#" << queue[i].head.seqNumber <<",	winSize = " << window_size << endl;
 			}
 			bool success = true;
-			for(int i = last_ack + 1; i < last_ack + 1 + window_size; i++) {
+			for(int i = 0; i < window_size; i++) {
 				rtv = recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &agentaddr, &len);
 				if(rtv == -1) {
 					cout << "time	out,		threshold = " << threshold << endl;
 					success = false;
 				}
-				else if(tmp_seg.head.ackNumber == i) {
+				else if(tmp_seg.head.ackNumber == last_ack + 1) {
 					queue.pop_front();
-					cout << "recv	ack	#" << i << endl;
+					cout << "recv	ack	#" << last_ack + 1 << endl;
+					last_ack++;
+					queue_size--;
 				}
 				else {
 					cout << "recv	ack	#" << tmp_seg.head.ackNumber << endl;
 					success = false;
 				}
-				if(queue.empty()) break;
+				if(queue.empty()) {
+					break;
+					cout << "empty\n";
+				}
 			}
 			if(success) {
 				if(window_size < threshold) window_size *= 2;
