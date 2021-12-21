@@ -53,6 +53,7 @@ int main(int argc, char *argv[]) {
 	agentaddr.sin_addr.s_addr = INADDR_ANY;
 
 	cout << agentaddr.sin_port;
+	const struct sockaddr* AGENT = (const struct sockaddr *) &agentaddr;
 
 	if ( bind(sockfd, (const struct sockaddr *)&sendaddr, sizeof(sendaddr)) < 0 ) {
 		perror("bind failed");
@@ -95,32 +96,31 @@ int main(int argc, char *argv[]) {
 	tmp_seg.head.seqNumber = 0;
 	tmp_seg.head.length = strlen(input.c_str());
 	queue.push_back(tmp_seg);
-    long long int last_send = -1, last_ack = -1;
 	for(int f = 0; f < vid_length; f++) {
 		//parase frame
 		cap >> img;
 		int iter = frame_size / SIZEBUFF;
 		int leftover = frame_size % SIZEBUFF;
 		for(int i = 0; i < iter; i++) {
-			memset(&tmp_seg, 0, sizeof(segment));
 			memcpy(&tmp_seg.data, img.data + i * SIZEBUFF, SIZEBUFF);
 			tmp_seg.head.length = SIZEBUFF;
-			tmp_seg.head.seqNumber = last_send + i + 1 + (f == 0 ? 1 : 0);
+			tmp_seg.head.seqNumber = i + 1;
 			queue.push_back(tmp_seg);
 		}
-		memset(&tmp_seg, 0, sizeof(segment));
 		memcpy(&tmp_seg.data, img.data + iter * SIZEBUFF, leftover);
 		tmp_seg.head.length = leftover;
-		tmp_seg.head.seqNumber = last_send + iter + 1 + (f == 0 ? 1 : 0);
+		tmp_seg.head.seqNumber = iter + 1;
 		queue.push_back(tmp_seg);
 
+		int queue_size = queue.size();
+		int last_send = -1, last_ack = ((f == 0) ? -1 : 0);
 		int rtv;
 		unsigned int len = sizeof(agentaddr); 
 		//send each frame and get ACK
 		while(!(queue.empty())) {
-			window_size = min(window_size, int(queue.size()));
 			for(int i = 0; i < window_size; i++) {
-				sendto(sockfd, &(queue[i]), sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
+				if(i >= queue_size) break;
+				sendto(sockfd, &(queue[i]), sizeof(segment), 0, AGENT, sizeof(agentaddr));
 				if(queue[i].head.seqNumber > last_send) {
 					cout << "send	data	#" << queue[i].head.seqNumber <<",	winSize = " << window_size << endl;
 					last_send = queue[i].head.seqNumber;
@@ -129,18 +129,16 @@ int main(int argc, char *argv[]) {
 			}
 			bool success = true;
 			for(int i = 0; i < window_size; i++) {
-				rtv = recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &agentaddr, &len);
+				rtv = recvfrom(sockfd, &tmp_seg, sizeof(segment), 0, 0, 0);
 				if(rtv == -1) {
 					cout << "time	out,		threshold = " << threshold << endl;
 					success = false;
-                    break;
 				}
-				else if(tmp_seg.head.ackNumber >= last_ack + 1) {
-					while(queue.size() && tmp_seg.head.ackNumber >= queue.front().head.seqNumber) {
-                        queue.pop_front();
-                    }
-                    cout << "recv	ack	#" << tmp_seg.head.ackNumber << endl;
-					last_ack = tmp_seg.head.ackNumber;
+				else if(tmp_seg.head.ackNumber == last_ack + 1) {
+					queue.pop_front();
+					cout << "recv	ack	#" << last_ack + 1 << endl;
+					last_ack++;
+					queue_size--;
 				}
 				else {
 					cout << "recv	ack	#" << tmp_seg.head.ackNumber << endl;
@@ -162,11 +160,10 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	while(true) {
-		memset(&tmp_seg, 0, sizeof(segment));
 		tmp_seg.head.fin = 1;
-		sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
+		sendto(sockfd, &tmp_seg, sizeof(segment), 0, AGENT, sizeof(agentaddr));
 		cout << "send	fin\n";
-		recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &agentaddr, (unsigned int*)sizeof(agentaddr));
+		recvfrom(sockfd, &tmp_seg, sizeof(segment), 0, 0, 0);
 		if(tmp_seg.head.fin == 1 && tmp_seg.head.ack == 1) break;
 	}
 	cout << "recv	finack\n";

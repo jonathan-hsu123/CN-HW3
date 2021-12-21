@@ -57,17 +57,18 @@ int main(int argc, char *argv[]) {
 	segment tmp_seg;
 	int width, height, vid_length, frame_size;
 	Mat img;
-	int last_recv = 0, leftover, frame_seg;
+	int last_recv = 0, leftover;
 	while(true) {
-		memset(&tmp_seg, 0, sizeof(segment));
-		recvfrom(sockfd, &tmp_seg, sizeof(segment), MSG_WAITALL, (struct sockaddr *) &agentaddr, &len);
+		char c = (char)waitKey(33.3333);
+        if(c==27) break;
+
+		recvfrom(sockfd, &tmp_seg, sizeof(segment), 0, (struct sockaddr *) &agentaddr, &len);
 		bool output = (tmp_seg.head.length == leftover);
 		if(tmp_seg.head.fin == 1) {
 			cout << "recv	fin\n"; 
-			memset(&tmp_seg, 0, sizeof(segment));
 			tmp_seg.head.ack = 1;
 			tmp_seg.head.fin = 1;
-			sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
+			sendto(sockfd, &tmp_seg, sizeof(segment), 0, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
 			cout << "send	finack\n"; 
 			break;
 		}
@@ -78,41 +79,36 @@ int main(int argc, char *argv[]) {
          		img = img.clone();
     		}
 			leftover = frame_size % 1000;
-            frame_seg = frame_size / 1000 + 1;
 			// cout << width << " " << height << " " << vid_length << " " << frame_size << endl;
 			cout << "recv	data	#0\n"; 
-			memset(&tmp_seg, 0, sizeof(segment));
 			tmp_seg.head.ack = 1;
 			tmp_seg.head.ackNumber = 0;
-			sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
+			sendto(sockfd, &tmp_seg, sizeof(segment), 0, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
 			cout << "send	ack	#0\n"; 
 		}
 		else {
 			if(tmp_seg.head.seqNumber == last_recv + 1) {
-				memcpy(img.data + (last_recv % frame_seg) * 1000, &tmp_seg.data, tmp_seg.head.length);
+				memcpy(img.data + last_recv * 1000, &tmp_seg.data, tmp_seg.head.length);
 				last_recv++;
 				cout << "recv	data	#" << last_recv << endl;
-				memset(&tmp_seg, 0, sizeof(segment));
 				tmp_seg.head.ack = 1;
 				tmp_seg.head.ackNumber = last_recv;
-				sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
+				sendto(sockfd, &tmp_seg, sizeof(segment), 0, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
 				cout << "send	ack	#" << last_recv << endl;
 			}
 			else {
 				cout << "drop	data	#" << tmp_seg.head.seqNumber << endl;
-				memset(&tmp_seg, 0, sizeof(segment));
 				tmp_seg.head.ack = 1;
 				tmp_seg.head.ackNumber = last_recv;
-				sendto(sockfd, &tmp_seg, sizeof(segment), MSG_CONFIRM, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
+				sendto(sockfd, &tmp_seg, sizeof(segment), 0, (const struct sockaddr *) &agentaddr, sizeof(agentaddr));
 				cout << "send	ack	#" << last_recv << endl;
 			}
 		}
 		if(output && last_recv == frame_size / 1000 + 1) {
+			last_recv = 0;
 			imshow("Video", img);
-            char c = (char)waitKey(33.3333);
 			cout << "flush\n";
 		}
 	}
-    destroyAllWindows();
 	return 0;
 }
