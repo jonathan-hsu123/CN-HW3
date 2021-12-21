@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 	tmp_seg.head.seqNumber = 0;
 	tmp_seg.head.length = strlen(input.c_str());
 	queue.push_back(tmp_seg);
-	for(int f = 0; f < 2; f++) {
+	for(int f = 0; f < vid_length; f++) {
 		//parase frame
 		cap >> img;
 		int iter = frame_size / SIZEBUFF;

@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		if(output && last_recv == frame_size / 1000 + 1) {
-			last_recv = 1;
+			last_recv = 0;
 			imshow("Video", img);
 			cout << "flush\n";
 		}
