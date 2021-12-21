@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
 				cout << "send	ack	#" << last_recv << endl;
 			}
 		}
-		if(output && last_recv == frame_size / 1000 + 1) {
+		if(output && (last_recv % frame_seg) == 0) {
 			imshow("Video", img);
             char c = (char)waitKey(1);
 			cout << "flush\n";
