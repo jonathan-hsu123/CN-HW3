@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 	tmp_seg.head.length = strlen(input.c_str());
 	queue.push_back(tmp_seg);
     long long int last_send = -1, last_ack = -1;
-	for(int f = 0; f < vid_length; f++) {
+	for(int f = 0; f < 100; f++) {
 		//parase frame
 		cap >> img;
 		int iter = frame_size / SIZEBUFF;
@@ -170,5 +170,6 @@ int main(int argc, char *argv[]) {
 		if(tmp_seg.head.fin == 1 && tmp_seg.head.ack == 1) break;
 	}
 	cout << "recv	finack\n";
+	cap.release();
 	return 0;
 }

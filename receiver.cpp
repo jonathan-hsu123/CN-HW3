@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 		}
 		if(output && last_recv == frame_size / 1000 + 1) {
 			imshow("Video", img);
-            char c = (char)waitKey(33.3333);
+            char c = (char)waitKey(1);
 			cout << "flush\n";
 		}
 	}
