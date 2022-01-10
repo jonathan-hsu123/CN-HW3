@@ -109,10 +109,13 @@ int main(int argc, char *argv[]) {
 		}
 		if(output && (last_recv % frame_seg) == 0) {
 			imshow("Video", img);
-            char c = (char)waitKey(1);
+			char c = (char)waitKey(33.3333);
+			if(c == 27) break;
 			cout << "flush\n";
+			sleep(0.1);
 		}
 	}
     destroyAllWindows();
+	// char c = (char)waitKey(1);
 	return 0;
 }

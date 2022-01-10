@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
 	// some initial setting of sender side UDP socket
 
 	Mat img;
-	VideoCapture cap("./video.mpg");
+	VideoCapture cap(argv[4]);
 	int width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
     int height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
 	int vid_length = cap.get(CV_CAP_PROP_FRAME_COUNT);
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 	tmp_seg.head.length = strlen(input.c_str());
 	queue.push_back(tmp_seg);
     long long int last_send = -1, last_ack = -1;
-	for(int f = 0; f < 100; f++) {
+	for(int f = 0; f < vid_length; f++) {
 		//parase frame
 		cap >> img;
 		int iter = frame_size / SIZEBUFF;
